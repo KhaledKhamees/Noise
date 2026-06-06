@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5"
+    android:padding="16dp">
+
+    <!-- App title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Noise Level Meter"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#212121"
+        android:gravity="center"
+        android:paddingBottom="12dp"/>
+
+    <!-- Current dB reading — large and prominent -->
+    <TextView
+        android:id="@+id/tvCurrentDb"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="-- dB"
+        android:textSize="52sp"
+        android:textStyle="bold"
+        android:textColor="#1565C0"
+        android:gravity="center"
+        android:paddingBottom="4dp"/>
+
+    <!-- 10-second rolling average -->
+    <TextView
+        android:id="@+id/tvAvgDb"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="10s Average: -- dB"
+        android:textSize="18sp"
+        android:textColor="#424242"
+        android:gravity="center"
+        android:paddingBottom="8dp"/>
+
+    <!-- Red alert banner — hidden until average exceeds 70 dB -->
+    <TextView
+        android:id="@+id/tvAlert"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="⚠ NOISE ALERT: Average exceeds 70 dB!"
+        android:textSize="16sp"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:background="#D32F2F"
+        android:gravity="center"
+        android:padding="10dp"
+        android:visibility="gone"/>
+
+    <!-- Spacer -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="8dp"/>
+
+    <!-- Label above the chart -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Live Noise Chart"
+        android:textSize="14sp"
+        android:textColor="#757575"
+        android:paddingBottom="4dp"/>
+
+    <!-- Custom chart view — takes remaining space -->
+    <com.example.noiselevel.NoiseChartView
+        android:id="@+id/noiseChartView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#FFFFFF"/>
+
+    <!-- Start / Stop button -->
+    <Button
+        android:id="@+id/btnToggle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start Monitoring"
+        android:textSize="16sp"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="#1565C0"
+        android:textColor="#FFFFFF"/>
+
+</LinearLayout>
