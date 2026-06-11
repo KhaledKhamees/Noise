@@ -6,89 +6,81 @@ import android.media.MediaRecorder;
 
 public class NoiseCapture {
 
-    private static final int SAMPLE_RATE     = 44100;
-    private static final int CHANNEL_CONFIG  = AudioFormat.CHANNEL_IN_MONO;
-    private static final int AUDIO_FORMAT    = AudioFormat.ENCODING_PCM_16BIT;
-    private static final int READ_INTERVAL_MS = 100;
+    private static final int SAMPLING_RATE = 44100;
+    private static final int CHANNEL_SETUP = AudioFormat.CHANNEL_IN_MONO;
+    private static final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    private static final int UPDATE_INTERVAL = 100;
 
-    private AudioRecord audioRecord;
-    private Thread      captureThread;
-    private boolean     isRunning = false;
+    private AudioRecord recorder;
+    private Thread recordingThread;
+    private boolean isRecording = false;
+    private final int minBufferSize;
+    
+    private final AudioDataListener dataListener;
 
-    private final int bufferSize;
-    private final OnNoiseReadingListener listener;
-
-    public NoiseCapture(OnNoiseReadingListener listener) {
-        this.listener = listener;
-        bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
+    public NoiseCapture(AudioDataListener listener) {
+        this.dataListener = listener;
+        minBufferSize = AudioRecord.getMinBufferSize(SAMPLING_RATE, CHANNEL_SETUP, ENCODING);
     }
 
     public void start() {
-        if (isRunning) return;
+        if (isRecording) return;
 
-        audioRecord = new AudioRecord(
-                MediaRecorder.AudioSource.MIC,
-                SAMPLE_RATE,
-                CHANNEL_CONFIG,
-                AUDIO_FORMAT,
-                bufferSize
-        );
+        recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                SAMPLING_RATE, CHANNEL_SETUP, ENCODING, minBufferSize);
 
-        isRunning = true;
-        audioRecord.startRecording();
+        isRecording = true;
+        recorder.startRecording();
 
-        captureThread = new Thread(this::captureLoop, "NoiseCapture-Thread");
-        captureThread.start();
+        recordingThread = new Thread(this::recordLoop, "AudioCaptureThread");
+        recordingThread.start();
     }
 
     public void stop() {
-        isRunning = false;
-
-        if (captureThread != null) {
-            captureThread.interrupt();
-            captureThread = null;
+        isRecording = false;
+        
+        if (recordingThread != null) {
+            recordingThread.interrupt();
+            recordingThread = null;
         }
 
-        if (audioRecord != null) {
-            audioRecord.stop();
-            audioRecord.release();
-            audioRecord = null;
+        if (recorder != null) {
+            recorder.stop();
+            recorder.release();
+            recorder = null;
         }
     }
 
-    private void captureLoop() {
+    private void recordLoop() {
+        int samplesCount = SAMPLING_RATE * UPDATE_INTERVAL / 1000;
+        short[] audioBuffer = new short[samplesCount];
 
-        int samplesPerRead = SAMPLE_RATE * READ_INTERVAL_MS / 1000;
-        short[] buffer = new short[samplesPerRead];
-
-        while (isRunning && !Thread.currentThread().isInterrupted()) {
-            int samplesRead = audioRecord.read(buffer, 0, buffer.length);
-
-            if (samplesRead > 0) {
-                double db = calculateDecibels(buffer, samplesRead);
-                listener.onReading(db);
+        while (isRecording && !Thread.currentThread().isInterrupted()) {
+            int readCount = recorder.read(audioBuffer, 0, audioBuffer.length);
+            
+            if (readCount > 0) {
+                double decibelValue = computeDecibels(audioBuffer, readCount);
+                dataListener.onReading(decibelValue);
             }
         }
     }
 
-    private double calculateDecibels(short[] buffer, int sampleCount) {
-
-        double sumOfSquares = 0;
-        for (int i = 0; i < sampleCount; i++) {
-            double sample = buffer[i];
-            sumOfSquares += sample * sample;
+    private double computeDecibels(short[] buffer, int count) {
+        double squareSum = 0;
+        
+        for (int i = 0; i < count; i++) {
+            double sampleValue = buffer[i];
+            squareSum += sampleValue * sampleValue;
         }
 
-        double rms = Math.sqrt(sumOfSquares / sampleCount);
+        double rmsValue = Math.sqrt(squareSum / count);
+        if (rmsValue < 1) return 0.0;
 
-        if (rms < 1) return 0.0;
-
-        double db = 20.0 * Math.log10(rms / Short.MAX_VALUE);
-
-        return db + 90.0;
+        double dbLevel = 20.0 * Math.log10(rmsValue / Short.MAX_VALUE);
+        return dbLevel + 90.0;
     }
 
-    public interface OnNoiseReadingListener {
+    public interface AudioDataListener {
         void onReading(double decibels);
     }
 }

@@ -13,66 +13,67 @@ import java.util.List;
 
 public class NoiseChartView extends View {
 
-    private static final int MAX_POINTS = 100;
-    private static final double ALERT_DB = 70.0;
-    private static final double DB_MIN = 0.0;
-    private static final double DB_MAX = 100.0;
+    private static final int MAX_DATA_POINTS = 100;
+    private static final double THRESHOLD_LEVEL = 70.0;
+    private static final double MIN_DB = 0.0;
+    private static final double MAX_DB = 100.0;
 
-    private final Paint linePaint;
-    private final Paint gridPaint;
-    private final Paint thresholdPaint;
-    private final Paint labelPaint;
-    private final Paint backgroundPaint;
-    private final Paint fillPaint;
+    private Paint signalPaint;
+    private Paint gridLinePaint;
+    private Paint alertLinePaint;
+    private Paint textPaint;
+    private Paint bgPaint;
+    private Paint areaPaint;
 
-    private final List<Double> readings = new ArrayList<>();
+    private List<Double> dataPoints;
 
     public NoiseChartView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        dataPoints = new ArrayList<>();
+        initializePaints();
+    }
 
-        linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        linePaint.setColor(Color.parseColor("#1565C0"));
-        linePaint.setStrokeWidth(3f);
-        linePaint.setStyle(Paint.Style.STROKE);
+    private void initializePaints() {
+        signalPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        signalPaint.setColor(Color.parseColor("#1565C0"));
+        signalPaint.setStrokeWidth(3f);
+        signalPaint.setStyle(Paint.Style.STROKE);
 
-        gridPaint = new Paint();
-        gridPaint.setColor(Color.parseColor("#E0E0E0"));
-        gridPaint.setStrokeWidth(1f);
-        gridPaint.setStyle(Paint.Style.STROKE);
+        gridLinePaint = new Paint();
+        gridLinePaint.setColor(Color.parseColor("#E0E0E0"));
+        gridLinePaint.setStrokeWidth(1f);
+        gridLinePaint.setStyle(Paint.Style.STROKE);
 
-        thresholdPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        thresholdPaint.setColor(Color.parseColor("#D32F2F"));
-        thresholdPaint.setStrokeWidth(2f);
-        thresholdPaint.setStyle(Paint.Style.STROKE);
-        thresholdPaint.setPathEffect(
-                new android.graphics.DashPathEffect(new float[]{15f, 8f}, 0f)
-        );
+        alertLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        alertLinePaint.setColor(Color.parseColor("#D32F2F"));
+        alertLinePaint.setStrokeWidth(2f);
+        alertLinePaint.setStyle(Paint.Style.STROKE);
+        alertLinePaint.setPathEffect(
+            new android.graphics.DashPathEffect(new float[]{15f, 8f}, 0f));
 
-        labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        labelPaint.setColor(Color.parseColor("#757575"));
-        labelPaint.setTextSize(28f);
+        textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        textPaint.setColor(Color.parseColor("#757575"));
+        textPaint.setTextSize(28f);
 
-        backgroundPaint = new Paint();
-        backgroundPaint.setColor(Color.WHITE);
-        backgroundPaint.setStyle(Paint.Style.FILL);
+        bgPaint = new Paint();
+        bgPaint.setColor(Color.WHITE);
+        bgPaint.setStyle(Paint.Style.FILL);
 
-        fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        fillPaint.setColor(Color.parseColor("#1A1565C0"));
-        fillPaint.setStyle(Paint.Style.FILL);
+        areaPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        areaPaint.setColor(Color.parseColor("#1A1565C0"));
+        areaPaint.setStyle(Paint.Style.FILL);
     }
 
     public void addReading(double db) {
-        readings.add(db);
-
-        if (readings.size() > MAX_POINTS) {
-            readings.remove(0);
+        dataPoints.add(db);
+        if (dataPoints.size() > MAX_DATA_POINTS) {
+            dataPoints.remove(0);
         }
-
         postInvalidate();
     }
 
     public void clear() {
-        readings.clear();
+        dataPoints.clear();
         invalidate();
     }
 
@@ -80,66 +81,66 @@ public class NoiseChartView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        int width  = getWidth();
-        int height = getHeight();
+        int w = getWidth();
+        int h = getHeight();
 
-        float paddingLeft   = 50f;
-        float paddingRight  = 12f;
-        float paddingTop    = 12f;
-        float paddingBottom = 30f;
+        float leftPad = 50f;
+        float rightPad = 12f;
+        float topPad = 12f;
+        float bottomPad = 30f;
 
-        float chartLeft   = paddingLeft;
-        float chartRight  = width  - paddingRight;
-        float chartTop    = paddingTop;
-        float chartBottom = height - paddingBottom;
-        float chartWidth  = chartRight  - chartLeft;
-        float chartHeight = chartBottom - chartTop;
+        float drawLeft = leftPad;
+        float drawRight = w - rightPad;
+        float drawTop = topPad;
+        float drawBottom = h - bottomPad;
+        float drawW = drawRight - drawLeft;
+        float drawH = drawBottom - drawTop;
 
-        canvas.drawRect(0, 0, width, height, backgroundPaint);
+        canvas.drawRect(0, 0, w, h, bgPaint);
 
-        int[] gridLevels = {0, 25, 50, 70, 100};
-        for (int level : gridLevels) {
-            float y = dbToY(level, chartTop, chartHeight);
-            canvas.drawLine(chartLeft, y, chartRight, y, gridPaint);
-            canvas.drawText(level + "", 2f, y + 9f, labelPaint);
+        int[] levels = {0, 25, 50, 70, 100};
+        for (int level : levels) {
+            float yPos = calculateY(level, drawTop, drawH);
+            canvas.drawLine(drawLeft, yPos, drawRight, yPos, gridLinePaint);
+            canvas.drawText(level + "", 2f, yPos + 9f, textPaint);
         }
 
-        float thresholdY = dbToY(ALERT_DB, chartTop, chartHeight);
-        canvas.drawLine(chartLeft, thresholdY, chartRight, thresholdY, thresholdPaint);
+        float alertY = calculateY(THRESHOLD_LEVEL, drawTop, drawH);
+        canvas.drawLine(drawLeft, alertY, drawRight, alertY, alertLinePaint);
 
-        if (readings.size() < 2) return;
+        if (dataPoints.size() < 2) return;
 
-        float xStep = chartWidth / (MAX_POINTS - 1);
+        float stepX = drawW / (MAX_DATA_POINTS - 1);
 
-        Path linePath = new Path();
-        Path fillPath = new Path();
+        Path line = new Path();
+        Path area = new Path();
 
-        for (int i = 0; i < readings.size(); i++) {
-            int indexFromRight = (readings.size() - 1) - i;
-            float x = chartRight - (indexFromRight * xStep);
-            float y = dbToY(readings.get(i), chartTop, chartHeight);
+        for (int idx = 0; idx < dataPoints.size(); idx++) {
+            int reverseIdx = (dataPoints.size() - 1) - idx;
+            float xPos = drawRight - (reverseIdx * stepX);
+            float yPos = calculateY(dataPoints.get(idx), drawTop, drawH);
 
-            if (i == 0) {
-                linePath.moveTo(x, y);
-                fillPath.moveTo(x, chartBottom);
-                fillPath.lineTo(x, y);
+            if (idx == 0) {
+                line.moveTo(xPos, yPos);
+                area.moveTo(xPos, drawBottom);
+                area.lineTo(xPos, yPos);
             } else {
-                linePath.lineTo(x, y);
-                fillPath.lineTo(x, y);
+                line.lineTo(xPos, yPos);
+                area.lineTo(xPos, yPos);
             }
         }
 
-        float lastX = chartRight;
-        fillPath.lineTo(lastX, chartBottom);
-        fillPath.close();
+        float rightEdge = drawRight;
+        area.lineTo(rightEdge, drawBottom);
+        area.close();
 
-        canvas.drawPath(fillPath, fillPaint);
-        canvas.drawPath(linePath, linePaint);
+        canvas.drawPath(area, areaPaint);
+        canvas.drawPath(line, signalPaint);
     }
 
-    private float dbToY(double db, float chartTop, float chartHeight) {
-        double clamped = Math.max(DB_MIN, Math.min(DB_MAX, db));
-        double normalized = (clamped - DB_MIN) / (DB_MAX - DB_MIN);
-        return (float) (chartTop + chartHeight * (1.0 - normalized));
+    private float calculateY(double dbValue, float top, float height) {
+        double clipped = Math.max(MIN_DB, Math.min(MAX_DB, dbValue));
+        double norm = (clipped - MIN_DB) / (MAX_DB - MIN_DB);
+        return (float) (top + height * (1.0 - norm));
     }
 }

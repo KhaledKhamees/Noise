@@ -20,38 +20,39 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int REQUEST_RECORD_AUDIO = 101;
-    private static final int SAMPLES_PER_10_SECONDS = 100;
+    private static final int PERMISSION_REQUEST_CODE = 101;
+    private static final int WINDOW_SIZE = 100;
 
-    private TextView      tvCurrentDb;
-    private TextView      tvAvgDb;
-    private TextView      tvAlert;
-    private Button        btnToggle;
-    private NoiseChartView noiseChartView;
+    private TextView currentLevelText;
+    private TextView averageText;
+    private TextView warningText;
+    private Button toggleButton;
+    private NoiseChartView chartView;
 
-    private NoiseCapture noiseCapture;
+    private NoiseCapture audioCapture;
+    private final Deque<Double> dataWindow = new ArrayDeque<>();
+    private Handler mainHandler;
 
-    private final Deque<Double> rollingWindow = new ArrayDeque<>();
-    private final Handler uiHandler = new Handler(Looper.getMainLooper());
-
-    private boolean isMonitoring = false;
+    private boolean isActive = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        tvCurrentDb    = findViewById(R.id.tvCurrentDb);
-        tvAvgDb        = findViewById(R.id.tvAvgDb);
-        tvAlert        = findViewById(R.id.tvAlert);
-        btnToggle      = findViewById(R.id.btnToggle);
-        noiseChartView = findViewById(R.id.noiseChartView);
+        mainHandler = new Handler(Looper.getMainLooper());
+        
+        currentLevelText = findViewById(R.id.tvCurrentDb);
+        averageText = findViewById(R.id.tvAvgDb);
+        warningText = findViewById(R.id.tvAlert);
+        toggleButton = findViewById(R.id.btnToggle);
+        chartView = findViewById(R.id.noiseChartView);
 
-        btnToggle.setOnClickListener(v -> {
-            if (isMonitoring) {
-                stopMonitoring();
+        toggleButton.setOnClickListener(v -> {
+            if (isActive) {
+                stopRecording();
             } else {
-                requestMicPermissionAndStart();
+                checkPermissionAndStart();
             }
         });
     }
@@ -59,94 +60,86 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        stopMonitoring();
+        stopRecording();
     }
 
-    private void requestMicPermissionAndStart() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                == PackageManager.PERMISSION_GRANTED) {
-            startMonitoring();
+    private void checkPermissionAndStart() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
+            == PackageManager.PERMISSION_GRANTED) {
+            startRecording();
         } else {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{Manifest.permission.RECORD_AUDIO},
-                    REQUEST_RECORD_AUDIO
-            );
+            ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.RECORD_AUDIO},
+                PERMISSION_REQUEST_CODE);
         }
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions,
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode == REQUEST_RECORD_AUDIO) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startMonitoring();
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startRecording();
             } else {
-                Toast.makeText(this,
-                        "Microphone permission is required to measure noise levels.",
-                        Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Microphone permission is required to measure noise levels.",
+                    Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    private void startMonitoring() {
-        if (isMonitoring) return;
-        isMonitoring = true;
+    private void startRecording() {
+        if (isActive) return;
+        
+        isActive = true;
+        dataWindow.clear();
+        chartView.clear();
+        warningText.setVisibility(android.view.View.GONE);
+        toggleButton.setText("Stop Monitoring");
 
-        rollingWindow.clear();
-        noiseChartView.clear();
-        tvAlert.setVisibility(android.view.View.GONE);
-
-        btnToggle.setText("Stop Monitoring");
-
-        noiseCapture = new NoiseCapture(this::onNewReading);
-        noiseCapture.start();
+        audioCapture = new NoiseCapture(this::handleNewSample);
+        audioCapture.start();
     }
 
-    private void stopMonitoring() {
-        if (!isMonitoring) return;
-        isMonitoring = false;
-
-        if (noiseCapture != null) {
-            noiseCapture.stop();
-            noiseCapture = null;
+    private void stopRecording() {
+        if (!isActive) return;
+        
+        isActive = false;
+        if (audioCapture != null) {
+            audioCapture.stop();
+            audioCapture = null;
         }
-
-        btnToggle.setText("Start Monitoring");
+        toggleButton.setText("Start Monitoring");
     }
 
-    private void onNewReading(double db) {
-
-        rollingWindow.addLast(db);
-        if (rollingWindow.size() > SAMPLES_PER_10_SECONDS) {
-            rollingWindow.removeFirst();
+    private void handleNewSample(double decibels) {
+        dataWindow.addLast(decibels);
+        
+        if (dataWindow.size() > WINDOW_SIZE) {
+            dataWindow.removeFirst();
         }
 
-        double sum = 0;
-        for (double sample : rollingWindow) {
-            sum += sample;
+        double total = 0;
+        for (double val : dataWindow) {
+            total += val;
         }
-        double average = sum / rollingWindow.size();
+        double avg = total / dataWindow.size();
 
-        final double currentDb = db;
-        final double avgDb     = average;
+        final double currentLevel = decibels;
+        final double averageLevel = avg;
 
-        uiHandler.post(() -> {
+        mainHandler.post(() -> {
+            currentLevelText.setText(String.format(Locale.US, "%.1f dB", currentLevel));
+            averageText.setText(String.format(Locale.US, "10s Average: %.1f dB", averageLevel));
 
-            tvCurrentDb.setText(String.format(Locale.US, "%.1f dB", currentDb));
-            tvAvgDb.setText(String.format(Locale.US, "10s Average: %.1f dB", avgDb));
-
-            if (avgDb > 70.0) {
-                tvAlert.setVisibility(android.view.View.VISIBLE);
+            if (averageLevel > 70.0) {
+                warningText.setVisibility(android.view.View.VISIBLE);
             } else {
-                tvAlert.setVisibility(android.view.View.GONE);
+                warningText.setVisibility(android.view.View.GONE);
             }
-
-            noiseChartView.addReading(currentDb);
+            
+            chartView.addReading(currentLevel);
         });
     }
 }
