@@ -25,10 +25,22 @@ public class NoiseCapture {
             short[] buffer = new short[4410];
             while (running) {
                 rec.read(buffer, 0, buffer.length);
+                
                 double sum = 0;
-                for (short s : buffer) sum += s * s;
+                for (short s : buffer) {
+                    sum += s * s;
+                }
+                
                 double rms = Math.sqrt(sum / buffer.length);
-                listener.onReading(20 * Math.log10(rms / 32767) + 90);
+                
+                double db;
+                if (rms > 0) {
+                    db = 20 * Math.log10(rms) - 20 * Math.log10(32768) + 94;
+                } else {
+                    db = 0;
+                }
+                
+                listener.onReading(db);
             }
         });
         thread.start();
