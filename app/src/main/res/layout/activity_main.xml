@@ -12,15 +12,18 @@
         android:layout_height="wrap_content"
         android:text="-- dB"
         android:textSize="48sp"
-        android:gravity="center"/>
+        android:gravity="center"
+        android:paddingBottom="8dp"/>
 
     <TextView
         android:id="@+id/tvAlert"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="⚠ ALERT: > 70 dB"
+        android:textSize="18sp"
         android:textColor="#FF0000"
         android:gravity="center"
+        android:padding="8dp"
         android:visibility="gone"/>
 
     <com.example.noiselevel.NoiseChartView
@@ -28,6 +31,14 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="#FFFFFF"/>
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnToggle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start"
+        android:textSize="18sp"/>
 
 </LinearLayout>

@@ -3,6 +3,7 @@ package com.example.noiselevel;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -11,9 +12,11 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity {
 
     private TextView dbText, alertText;
+    private Button btnToggle;
     private NoiseChartView chartView;
     private NoiseCapture capture;
     private ArrayList<Double> window = new ArrayList<>();
+    private boolean isRunning = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,13 +25,20 @@ public class MainActivity extends AppCompatActivity {
 
         dbText = findViewById(R.id.tvCurrentDb);
         alertText = findViewById(R.id.tvAlert);
+        btnToggle = findViewById(R.id.btnToggle);
         chartView = findViewById(R.id.noiseChartView);
 
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, 1);
-        } else {
-            start();
-        }
+        btnToggle.setOnClickListener(v -> {
+            if (isRunning) {
+                stop();
+            } else {
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, 1);
+                } else {
+                    start();
+                }
+            }
+        });
     }
 
     @Override
@@ -38,6 +48,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void start() {
+        isRunning = true;
+        btnToggle.setText("Stop");
+        window.clear();
+        chartView.clear();
+        
         capture = new NoiseCapture(db -> runOnUiThread(() -> {
             window.add(db);
             if (window.size() > 100) window.remove(0);
@@ -53,9 +68,15 @@ public class MainActivity extends AppCompatActivity {
         capture.start();
     }
 
+    private void stop() {
+        isRunning = false;
+        btnToggle.setText("Start");
+        if (capture != null) capture.stop();
+    }
+
     @Override
     protected void onStop() {
         super.onStop();
-        if (capture != null) capture.stop();
+        stop();
     }
 }
