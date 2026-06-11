@@ -11,7 +11,7 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView dbText, alertText;
+    private TextView dbText, avgText, alertText;
     private Button btnToggle;
     private NoiseChartView chartView;
     private NoiseCapture capture;
@@ -24,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         dbText = findViewById(R.id.tvCurrentDb);
+        avgText = findViewById(R.id.tvAvgDb);
         alertText = findViewById(R.id.tvAlert);
         btnToggle = findViewById(R.id.btnToggle);
         chartView = findViewById(R.id.noiseChartView);
@@ -62,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
             avg /= window.size();
 
             dbText.setText(String.format("%.0f dB", db));
+            avgText.setText(String.format("Avg: %.0f dB", avg));
             alertText.setVisibility(avg > 70 ? android.view.View.VISIBLE : android.view.View.GONE);
             chartView.add(db);
         }));

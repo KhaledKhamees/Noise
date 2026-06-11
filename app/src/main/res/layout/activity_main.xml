@@ -13,6 +13,15 @@
         android:text="-- dB"
         android:textSize="48sp"
         android:gravity="center"
+        android:paddingBottom="4dp"/>
+
+    <TextView
+        android:id="@+id/tvAvgDb"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Avg: -- dB"
+        android:textSize="24sp"
+        android:gravity="center"
         android:paddingBottom="8dp"/>
 
     <TextView
